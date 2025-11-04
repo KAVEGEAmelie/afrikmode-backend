@@ -1,0 +1,191 @@
+version: '3.8'
+
+services:
+  # Base de données PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: afrikmode_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: afrikmode_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_INITDB_ARGS: '--encoding=UTF-8'
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+    networks:
+      - afrikmode_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d afrikmode_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Base de données de test
+  db_test:
+    image: postgres:15-alpine
+    container_name: afrikmode_postgres_test
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: afrikmode_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    networks:
+      - afrikmode_network
+    profiles:
+      - test
+
+  # Redis pour cache et sessions
+  redis:
+    image: redis:7-alpine
+    container_name: afrikmode_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - afrikmode_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    command: redis-server --appendonly yes --requirepass ""
+
+  # Application principale (optionnel, pour développement complet)
+  app:
+    build: .
+    container_name: afrikmode_backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: afrikmode_dev
+      DB_USER: postgres
+      DB_PASSWORD: password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - afrikmode_network
+    profiles:
+      - full
+    command: npm run dev
+
+  # pgAdmin pour interface graphique PostgreSQL
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: afrikmode_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@afrikmode.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - db
+    networks:
+      - afrikmode_network
+    profiles:
+      - tools
+
+  # Redis Commander pour interface graphique Redis
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: afrikmode_redis_commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - afrikmode_network
+    profiles:
+      - tools
+
+  # Mailhog pour tester les emails en local
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: afrikmode_mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Interface web
+    networks:
+      - afrikmode_network
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+    driver: local
+  postgres_test_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  afrikmode_network:
+    driver: bridge
+
+# ===========================================
+# UTILISATION
+# ===========================================
+#
+# Développement de base (PostgreSQL + Redis seulement) :
+# docker-compose up -d db redis
+#
+# Développement avec outils :
+# docker-compose --profile tools up -d
+#
+# Tests (avec base de test) :
+# docker-compose --profile test up -d db_test
+#
+# Développement complet avec app :
+# docker-compose --profile full up -d
+#
+# Arrêter tous les services :
+# docker-compose down
+#
+# Nettoyer volumes (⚠️ supprime toutes les données) :
+# docker-compose down -v
+#
+# ===========================================
+# ACCÈS INTERFACES
+# ===========================================
+#
+# PostgreSQL : localhost:5432
+# Redis : localhost:6379
+# pgAdmin : http://localhost:5050
+# Redis Commander : http://localhost:8081
+# MailHog : http://localhost:8025
+# Application : http://localhost:5000
+#
