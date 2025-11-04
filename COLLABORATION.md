@@ -177,8 +177,10 @@ backend/
 ## 🤝 Workflow Git
 
 ### Branches principales :
-- `main` : Branche de production (stable)
-- `develop` : Branche de développement
+- `main` : Branche de production (stable) - Code prêt pour la production
+- `develop` : Branche de développement - Toutes les fonctionnalités et corrections
+
+**Note** : Les deux branches contiennent actuellement le même code. `develop` sera utilisée pour le développement actif, et `main` sera mise à jour via des Pull Requests depuis `develop`.
 
 ### Créer une nouvelle fonctionnalité :
 ```bash
