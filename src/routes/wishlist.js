@@ -269,4 +269,231 @@ router.delete('/', requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * @route DELETE /api/wishlist/all
+ * @desc Vider la wishlist (alias)
+ * @access Private
+ */
+router.delete('/all', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    await db('wishlist_items')
+      .where({ user_id: userId })
+      .update({ deleted_at: db.fn.now() });
+
+    res.json({
+      success: true,
+      message: 'Liste de souhaits vidée'
+    });
+
+  } catch (error) {
+    console.error('Erreur vidage wishlist:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors du vidage de la liste de souhaits',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route GET /api/wishlist/:productId/check
+ * @desc Vérifier si un produit est dans la wishlist
+ * @access Private
+ */
+router.get('/:productId/check', requireAuth, async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const userId = req.user.id;
+
+    const item = await db('wishlist_items')
+      .where({ user_id: userId, product_id: productId })
+      .whereNull('deleted_at')
+      .first();
+
+    res.json({
+      success: true,
+      in_wishlist: !!item
+    });
+
+  } catch (error) {
+    console.error('Erreur vérification wishlist:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la vérification',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route POST /api/wishlist/:productId/move-to-cart
+ * @desc Déplacer un produit de la wishlist vers le panier
+ * @access Private
+ */
+router.post('/:productId/move-to-cart', requireAuth, async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const userId = req.user.id;
+
+    // Vérifier si le produit est dans la wishlist
+    const wishlistItem = await db('wishlist_items')
+      .where({ user_id: userId, product_id: productId })
+      .whereNull('deleted_at')
+      .first();
+
+    if (!wishlistItem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit non trouvé dans la liste de souhaits'
+      });
+    }
+
+    // Vérifier si le produit est déjà dans le panier
+    const existingCartItem = await db('cart_items')
+      .where({ user_id: userId, product_id: productId })
+      .whereNull('deleted_at')
+      .first();
+
+    if (existingCartItem) {
+      // Si déjà dans le panier, juste supprimer de la wishlist
+      await db('wishlist_items')
+        .where({ id: wishlistItem.id })
+        .update({ deleted_at: db.fn.now() });
+
+      return res.json({
+        success: true,
+        message: 'Produit déjà dans le panier, retiré de la liste de souhaits'
+      });
+    }
+
+    // Ajouter au panier
+    await db('cart_items').insert({
+      user_id: userId,
+      product_id: productId,
+      quantity: 1,
+      created_at: db.fn.now()
+    });
+
+    // Retirer de la wishlist
+    await db('wishlist_items')
+      .where({ id: wishlistItem.id })
+      .update({ deleted_at: db.fn.now() });
+
+    res.json({
+      success: true,
+      message: 'Produit déplacé vers le panier'
+    });
+
+  } catch (error) {
+    console.error('Erreur déplacement vers panier:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors du déplacement vers le panier',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route POST /api/wishlist/move-all-to-cart
+ * @desc Déplacer tous les produits de la wishlist vers le panier
+ * @access Private
+ */
+router.post('/move-all-to-cart', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Récupérer tous les produits de la wishlist
+    const wishlistItems = await db('wishlist_items')
+      .where({ user_id: userId })
+      .whereNull('deleted_at');
+
+    if (wishlistItems.length === 0) {
+      return res.json({
+        success: true,
+        message: 'Liste de souhaits vide',
+        moved: 0
+      });
+    }
+
+    let moved = 0;
+    let skipped = 0;
+
+    for (const item of wishlistItems) {
+      // Vérifier si déjà dans le panier
+      const existingCartItem = await db('cart_items')
+        .where({ user_id: userId, product_id: item.product_id })
+        .whereNull('deleted_at')
+        .first();
+
+      if (!existingCartItem) {
+        // Ajouter au panier
+        await db('cart_items').insert({
+          user_id: userId,
+          product_id: item.product_id,
+          quantity: 1,
+          created_at: db.fn.now()
+        });
+        moved++;
+      } else {
+        skipped++;
+      }
+
+      // Retirer de la wishlist
+      await db('wishlist_items')
+        .where({ id: item.id })
+        .update({ deleted_at: db.fn.now() });
+    }
+
+    res.json({
+      success: true,
+      message: `${moved} produit(s) déplacé(s) vers le panier`,
+      moved,
+      skipped
+    });
+
+  } catch (error) {
+    console.error('Erreur déplacement tous vers panier:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors du déplacement vers le panier',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route POST /api/wishlist/share
+ * @desc Partager la wishlist (générer un lien de partage)
+ * @access Private
+ */
+router.post('/share', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Générer un token de partage unique
+    const shareToken = require('crypto').randomBytes(32).toString('hex');
+
+    // Sauvegarder le token (vous pouvez créer une table share_tokens si nécessaire)
+    // Pour l'instant, on retourne juste un message
+
+    res.json({
+      success: true,
+      message: 'Lien de partage généré',
+      shareUrl: `${process.env.FRONTEND_URL || 'http://localhost:4200'}/wishlist/shared/${shareToken}`,
+      token: shareToken
+    });
+
+  } catch (error) {
+    console.error('Erreur partage wishlist:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la génération du lien de partage',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 module.exports = router;

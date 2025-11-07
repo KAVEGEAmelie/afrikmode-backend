@@ -90,10 +90,12 @@ const uploadMemory = multer({
   limits: {
     fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024,
     files: 10,
-    fieldSize: 10 * 1024 * 1024 // 10MB pour les champs texte (description longue)
+    fieldSize: 10 * 1024 * 1024, // 10MB pour les champs texte (description longue)
+    fields: 50 // Nombre maximum de champs texte
   },
   fileFilter: fileFilter
-  // Multer parse automatiquement les champs texte du FormData dans req.body
+  // Multer parse automatiquement TOUS les champs texte du FormData dans req.body
+  // Les champs de fichiers vont dans req.files, les champs texte dans req.body
 });
 
 /**

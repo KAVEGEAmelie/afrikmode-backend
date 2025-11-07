@@ -40,6 +40,7 @@ router.get('/', requireAuth, async (req, res) => {
         items: cartItems,
         total_items: totalItems,
         total_amount: total,
+        total: total, // Alias pour compatibilité
         currency: 'FCFA'
       }
     });

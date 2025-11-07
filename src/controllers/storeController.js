@@ -354,12 +354,22 @@ const getStoreById = asyncHandler(async (req, res) => {
  */
 const createStore = asyncHandler(async (req, res) => {
   // Debug: Afficher req.body pour comprendre la structure
+  console.log('\n========== DEBUG CREATE STORE ==========');
   console.log('📦 Content-Type:', req.headers['content-type']);
-  console.log('📦 req.body:', JSON.stringify(req.body, null, 2));
+  console.log('📦 Method:', req.method);
+  console.log('📦 Path:', req.path);
+  console.log('📦 req.body type:', typeof req.body);
   console.log('📦 req.body keys:', Object.keys(req.body || {}));
+  console.log('📦 req.body:', JSON.stringify(req.body, null, 2));
   console.log('📦 req.files:', req.files ? Object.keys(req.files) : 'no files');
+  if (req.files) {
+    console.log('📦 req.files details:', Object.keys(req.files).map(key => ({
+      field: key,
+      count: Array.isArray(req.files[key]) ? req.files[key].length : 1
+    })));
+  }
+  console.log('==========================================\n');
   
-  // Si req.body est vide, essayer de parser depuis req si disponible
   // Multer devrait avoir déjà parsé les champs texte dans req.body
   
   const {

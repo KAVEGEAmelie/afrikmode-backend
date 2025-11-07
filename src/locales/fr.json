@@ -1,0 +1,50 @@
+{
+  "welcome": "Bienvenue sur AfrikMode",
+  "auth": {
+    "login_success": "Connexion réussie",
+    "login_failed": "Identifiants invalides",
+    "register_success": "Inscription réussie",
+    "register_failed": "Erreur lors de l'inscription",
+    "logout_success": "Déconnexion réussie",
+    "email_verified": "Email vérifié avec succès",
+    "password_reset_sent": "Lien de réinitialisation envoyé",
+    "password_reset_success": "Mot de passe réinitialisé avec succès",
+    "account_suspended": "Votre compte est suspendu",
+    "account_banned": "Votre compte a été banni"
+  },
+  "products": {
+    "not_found": "Produit non trouvé",
+    "created": "Produit créé avec succès",
+    "updated": "Produit mis à jour",
+    "deleted": "Produit supprimé",
+    "out_of_stock": "Produit en rupture de stock",
+    "low_stock": "Stock faible"
+  },
+  "orders": {
+    "created": "Commande créée avec succès",
+    "not_found": "Commande non trouvée",
+    "status_updated": "Statut de commande mis à jour",
+    "cancelled": "Commande annulée",
+    "delivered": "Commande livrée"
+  },
+  "payments": {
+    "initiated": "Paiement initié",
+    "success": "Paiement réussi",
+    "failed": "Paiement échoué",
+    "refunded": "Paiement remboursé"
+  },
+  "errors": {
+    "validation": "Erreurs de validation",
+    "not_found": "Ressource non trouvée",
+    "unauthorized": "Non autorisé",
+    "forbidden": "Accès interdit",
+    "server_error": "Erreur interne du serveur",
+    "rate_limit": "Trop de requêtes"
+  },
+  "success": {
+    "operation_completed": "Opération terminée avec succès",
+    "data_saved": "Données sauvegardées",
+    "data_updated": "Données mises à jour",
+    "data_deleted": "Données supprimées"
+  }
+}

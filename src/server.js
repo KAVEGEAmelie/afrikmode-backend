@@ -133,19 +133,16 @@ app.use(morgan('dev'));
 // Configuration pour les uploads d'images (limite de 10MB)
 // Middleware conditionnel pour éviter le parsing JSON sur les routes d'upload
 app.use((req, res, next) => {
-  // Vérifier si c'est une route d'upload de fichier ou FormData
+  // Vérifier si c'est une route d'upload de fichier
   const isUploadRoute = req.path.includes('/upload') || 
                        req.path.includes('/images') ||
                        req.path.includes('/avatar') ||
                        req.path.includes('/product-images') ||
-                       req.path.includes('/store-images');
+                       req.path.includes('/store-images') ||
+                       (req.path === '/api/stores' && req.method === 'POST');
   
-  // Pour /api/stores POST, on envoie FormData, donc ne pas parser en JSON
-  // Multer parse automatiquement les champs texte du FormData dans req.body
-  const isFormDataRoute = (req.path === '/api/stores' && req.method === 'POST');
-  
-  if (isUploadRoute || isFormDataRoute) {
-    // Pour les routes d'upload/FormData, ne pas parser en JSON (multer s'en charge)
+  if (isUploadRoute) {
+    // Pour les routes d'upload, ne pas parser en JSON (multer s'en charge)
     return next();
   }
   
@@ -154,19 +151,7 @@ app.use((req, res, next) => {
 });
 
 // Appliquer urlencoded pour toutes les routes (fallback)
-// MAIS: Ne pas parser pour les routes FormData (Multer s'en charge)
-app.use((req, res, next) => {
-  // Ne pas parser urlencoded pour les routes FormData
-  const isFormDataRoute = (req.path === '/api/stores' && req.method === 'POST') ||
-                         req.headers['content-type']?.includes('multipart/form-data');
-  
-  if (isFormDataRoute) {
-    return next(); // Multer parse les champs texte du FormData
-  }
-  
-  // Pour les autres routes, parser urlencoded
-  express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
-});
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Configuration spécifique pour les uploads de fichiers
 const multer = require('multer');
